@@ -10,7 +10,8 @@ interface ExpenseChartProps {
 }
 
 export function ExpenseChart({ data, title = "Despesas por Categoria" }: ExpenseChartProps) {
-  const total = data.reduce((sum, item) => sum + item.value, 0);
+  const hasData = data && data.length > 0;
+  const total = hasData ? data.reduce((sum, item) => sum + item.value, 0) : 0;
 
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
@@ -35,32 +36,41 @@ export function ExpenseChart({ data, title = "Despesas por Categoria" }: Expense
         <CardTitle className="text-base">{title}</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="h-[280px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={data}
-                cx="50%"
-                cy="50%"
-                innerRadius={60}
-                outerRadius={100}
-                paddingAngle={2}
-                dataKey="value"
-              >
-                {data.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip content={<CustomTooltip />} />
-              <Legend
-                layout="vertical"
-                align="right"
-                verticalAlign="middle"
-                formatter={(value) => <span className="text-sm">{value}</span>}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
+        {!hasData ? (
+          <div className="flex h-[300px] items-center justify-center text-muted-foreground">
+            Nenhuma despesa encontrada.
+          </div>
+        ) : (
+          <div className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={data}
+                  cx="50%"
+                  cy="45%"
+                  innerRadius={45}
+                  outerRadius={75}
+                  paddingAngle={2}
+                  dataKey="value"
+                >
+                  {data.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip content={<CustomTooltip />} />
+                <Legend
+                  layout="horizontal"
+                  align="center"
+                  verticalAlign="bottom"
+                  formatter={(value) => (
+                    <span className="text-xs text-foreground/80">{value}</span>
+                  )}
+                  wrapperStyle={{ fontSize: 12 }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

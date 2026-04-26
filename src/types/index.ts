@@ -18,6 +18,9 @@ export interface Transaction {
   amount: number;
   type: TransactionType;
   category: TransactionCategory;
+  categoryId: string;
+  categoryName?: string;
+  categoryColor?: string;
   date: string;
   createdAt: string;
   updatedAt: string;
@@ -41,6 +44,22 @@ export interface CategoryData {
   name: string;
   value: number;
   color: string;
+  id?: string;
+}
+
+export interface CategoryStatistics {
+  categoriaId: string;
+  categoriaNome: string;
+  categoriaCor: string;
+  total: number;
+}
+
+export interface MonthlyStatistics {
+  mes: number;
+  ano: number;
+  nomeMes: string;
+  totalReceitas: number;
+  totalDespesas: number;
 }
 
 export interface ProjectionData {

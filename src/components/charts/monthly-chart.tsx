@@ -10,6 +10,8 @@ interface MonthlyBarChartProps {
 }
 
 export function MonthlyBarChart({ data, title = "Receitas vs Despesas" }: MonthlyBarChartProps) {
+  const hasData = data && data.length > 0;
+
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
@@ -32,19 +34,25 @@ export function MonthlyBarChart({ data, title = "Receitas vs Despesas" }: Monthl
         <CardTitle className="text-base">{title}</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="h-[300px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-              <XAxis dataKey="month" className="text-xs" />
-              <YAxis className="text-xs" tickFormatter={(value) => `R$ ${value / 1000}k`} />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend />
-              <Bar dataKey="income" name="Receitas" fill="#22c55e" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="expense" name="Despesas" fill="#ef4444" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+        {!hasData ? (
+          <div className="flex h-[300px] items-center justify-center text-muted-foreground">
+            Nenhum dado encontrado para o período selecionado.
+          </div>
+        ) : (
+          <div className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis dataKey="month" className="text-xs" />
+                <YAxis className="text-xs" tickFormatter={(value) => `R$ ${value / 1000}k`} />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend />
+                <Bar dataKey="income" name="Receitas" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="expense" name="Despesas" fill="#ef4444" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

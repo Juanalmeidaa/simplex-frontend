@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { useTransactionStore } from "@/store";
+import { useState, useEffect, useMemo } from "react";
+import { useTransactionStore, useAuthStore, useCategoryStore } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -21,8 +21,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Transaction, TransactionType, TransactionCategory } from "@/types";
-import { CATEGORY_COLORS } from "@/lib/mockData";
+import { Transaction, TransactionType } from "@/types";
 import {
   Plus,
   Pencil,
@@ -31,38 +30,58 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   X,
+  Loader2,
 } from "lucide-react";
-
-const categories: TransactionCategory[] = [
-  "salario",
-  "freelance",
-  "investimento",
-  "alimentacao",
-  "moradia",
-  "transporte",
-  "lazer",
-  "saude",
-  "educacao",
-  "outros",
-];
+import { useRouter } from "next/navigation";
 
 export default function TransacoesPage() {
-  const { transactions, addTransaction, updateTransaction, deleteTransaction } =
-    useTransactionStore();
+  const router = useRouter();
+  const { isAuthenticated } = useAuthStore();
+  const {
+    transactions,
+    fetchTransactions,
+    addTransaction,
+    updateTransaction,
+    deleteTransaction,
+    isLoading,
+  } = useTransactionStore();
+  const { categories, fetchCategories } = useCategoryStore();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState<TransactionType | "all">("all");
-  const [filterCategory, setFilterCategory] = useState<TransactionCategory | "all">("all");
+  const [filterCategory, setFilterCategory] = useState<string>("all");
+  const [submitting, setSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
     description: "",
     amount: "",
     type: "expense" as TransactionType,
-    category: "outros" as TransactionCategory,
+    categoryId: "",
     date: new Date().toISOString().split("T")[0],
   });
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push("/login");
+      return;
+    }
+
+    fetchTransactions({ limite: 100 });
+    fetchCategories();
+  }, [isAuthenticated, router, fetchTransactions, fetchCategories]);
+
+  const filteredCategories = useMemo(() => {
+    return categories.filter((cat) => cat.tipo === (formData.type === "income" ? "RECEITA" : "DESPESA"));
+  }, [categories, formData.type]);
+
+  useEffect(() => {
+    if (filteredCategories.length > 0 && !formData.categoryId) {
+      setFormData((prev) => ({ ...prev, categoryId: filteredCategories[0]?.id || "" }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredCategories]);
 
   const filteredTransactions = useMemo(() => {
     return transactions.filter((t) => {
@@ -71,7 +90,7 @@ export default function TransacoesPage() {
         .includes(searchTerm.toLowerCase());
       const matchesType = filterType === "all" || t.type === filterType;
       const matchesCategory =
-        filterCategory === "all" || t.category === filterCategory;
+        filterCategory === "all" || t.categoryId === filterCategory;
       return matchesSearch && matchesType && matchesCategory;
     });
   }, [transactions, searchTerm, filterType, filterCategory]);
@@ -83,16 +102,17 @@ export default function TransacoesPage() {
         description: transaction.description,
         amount: transaction.amount.toString(),
         type: transaction.type,
-        category: transaction.category,
-        date: transaction.date,
+        categoryId: transaction.categoryId,
+        date: transaction.date.split("T")[0],
       });
     } else {
       setEditingId(null);
+      const defaultCategory = filteredCategories[0];
       setFormData({
         description: "",
         amount: "",
         type: "expense",
-        category: "outros",
+        categoryId: defaultCategory?.id || "",
         date: new Date().toISOString().split("T")[0],
       });
     }
@@ -102,38 +122,69 @@ export default function TransacoesPage() {
   const closeModal = () => {
     setIsModalOpen(false);
     setEditingId(null);
-    setFormData({
-      description: "",
-      amount: "",
-      type: "expense",
-      category: "outros",
-      date: new Date().toISOString().split("T")[0],
-    });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const data = {
-      description: formData.description,
-      amount: parseFloat(formData.amount),
-      type: formData.type,
-      category: formData.category,
-      date: formData.date,
-    };
+    setSubmitting(true);
 
-    if (editingId) {
-      updateTransaction(editingId, data);
-    } else {
-      addTransaction(data);
+    try {
+      const data = {
+        descricao: formData.description,
+        valor: parseFloat(formData.amount),
+        tipo: formData.type === "income" ? "RECEITA" : "DESPESA",
+        categoriaId: formData.categoryId,
+        data: new Date(formData.date).toISOString(),
+      };
+
+      if (editingId) {
+        await updateTransaction(editingId, {
+          descricao: data.descricao,
+          valor: data.valor,
+          tipo: data.tipo === "RECEITA" ? "income" : "expense",
+          categoriaId: data.categoriaId,
+          data: data.data,
+        });
+      } else {
+        await addTransaction({
+          descricao: data.descricao,
+          valor: data.valor,
+          tipo: data.tipo === "RECEITA" ? "income" : "expense",
+          categoriaId: data.categoriaId,
+          data: data.data,
+        });
+      }
+      closeModal();
+    } catch (error) {
+      console.error("Erro ao salvar transação:", error);
+    } finally {
+      setSubmitting(false);
     }
-    closeModal();
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm("Tem certeza que deseja excluir esta transação?")) {
-      deleteTransaction(id);
+      try {
+        await deleteTransaction(id);
+      } catch (error) {
+        console.error("Erro ao deletar transação:", error);
+      }
     }
   };
+
+  const getCategoryColor = (categoryId: string) => {
+    const category = categories.find((c) => c.id === categoryId);
+    return category?.cor || "#6b7280";
+  };
+
+  const getCategoryName = (categoryId: string) => {
+    const category = categories.find((c) => c.id === categoryId);
+    return category?.nome || "Sem categoria";
+  };
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <div className="space-y-6">
@@ -180,17 +231,13 @@ export default function TransacoesPage() {
             </Select>
             <Select
               value={filterCategory}
-              onChange={(e) =>
-                setFilterCategory(
-                  e.target.value as TransactionCategory | "all"
-                )
-              }
+              onChange={(e) => setFilterCategory(e.target.value)}
               className="w-[180px]"
             >
               <option value="all">Todas categorias</option>
               {categories.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                <option key={cat.id} value={cat.id}>
+                  {cat.nome}
                 </option>
               ))}
             </Select>
@@ -211,7 +258,13 @@ export default function TransacoesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredTransactions.length === 0 ? (
+              {isLoading && transactions.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
+                  </TableCell>
+                </TableRow>
+              ) : filteredTransactions.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center py-8">
                     <p className="text-muted-foreground">
@@ -245,12 +298,11 @@ export default function TransacoesPage() {
                     <TableCell>
                       <Badge
                         style={{
-                          backgroundColor: `${CATEGORY_COLORS[transaction.category]}20`,
-                          color: CATEGORY_COLORS[transaction.category],
+                          backgroundColor: `${getCategoryColor(transaction.categoryId)}20`,
+                          color: getCategoryColor(transaction.categoryId),
                         }}
                       >
-                        {transaction.category.charAt(0).toUpperCase() +
-                          transaction.category.slice(1)}
+                        {getCategoryName(transaction.categoryId)}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -328,12 +380,17 @@ export default function TransacoesPage() {
                   <label className="text-sm font-medium">Tipo</label>
                   <Select
                     value={formData.type}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      const newType = e.target.value as TransactionType;
+                      const defaultCat = categories.find(
+                        (c) => c.tipo === (newType === "income" ? "RECEITA" : "DESPESA")
+                      );
                       setFormData({
                         ...formData,
-                        type: e.target.value as TransactionType,
-                      })
-                    }
+                        type: newType,
+                        categoryId: defaultCat?.id || "",
+                      });
+                    }}
                     required
                   >
                     <option value="income">Receita</option>
@@ -343,18 +400,18 @@ export default function TransacoesPage() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Categoria</label>
                   <Select
-                    value={formData.category}
+                    value={formData.categoryId}
                     onChange={(e) =>
                       setFormData({
                         ...formData,
-                        category: e.target.value as TransactionCategory,
+                        categoryId: e.target.value,
                       })
                     }
                     required
                   >
-                    {categories.map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                    {filteredCategories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.nome}
                       </option>
                     ))}
                   </Select>
@@ -386,7 +443,10 @@ export default function TransacoesPage() {
                 </div>
               </CardContent>
               <div className="p-6 pt-0">
-                <Button type="submit" className="w-full">
+                <Button type="submit" className="w-full" disabled={submitting}>
+                  {submitting ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : null}
                   {editingId ? "Salvar Alterações" : "Adicionar Transação"}
                 </Button>
               </div>

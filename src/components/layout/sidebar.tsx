@@ -63,20 +63,7 @@ export function Sidebar() {
               </Link>
             );
           })}
-        </nav>
-
-        <div className="border-t p-4">
-          <button
-            onClick={toggleSidebar}
-            className="flex w-full items-center justify-center rounded-lg px-3 py-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-          >
-            {sidebarOpen ? (
-              <ChevronLeft className="h-5 w-5" />
-            ) : (
-              <ChevronRight className="h-5 w-5" />
-            )}
-          </button>
-        </div>
+        </nav>  
       </div>
     </aside>
   );
