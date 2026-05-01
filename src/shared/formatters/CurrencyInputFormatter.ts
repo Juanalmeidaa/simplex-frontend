@@ -60,10 +60,10 @@ export class CurrencyInputFormatter {
 
   static fromStorage(cents: number): string {
     if (!cents) return '';
-    
+
     return new Intl.NumberFormat('pt-BR', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    }).format(cents);
+    }).format(cents / 100);
   }
 }

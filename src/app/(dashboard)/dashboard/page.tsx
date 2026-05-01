@@ -214,7 +214,7 @@ export default function DashboardPage() {
                       }`}
                     >
                       {transaction.type === "income" ? "+" : "-"}{" "}
-                      {CurrencyFormatter.formatValue(transaction.amount)}
+                      {CurrencyFormatter.format(transaction.amount)}
                     </p>
                   </div>
                 ))}

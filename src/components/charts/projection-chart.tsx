@@ -21,7 +21,7 @@ export function ProjectionChart({ data, title = "Projeção Futura" }: Projectio
           <p className="font-medium">{label}</p>
           {payload.map((item: any, index: number) => (
             <p key={index} className="text-sm" style={{ color: item.color }}>
-              {item.name}: {CurrencyFormatter.formatValue(item.value)}
+              {item.name}: {CurrencyFormatter.format(item.value)}
             </p>
           ))}
         </div>
@@ -51,7 +51,7 @@ export function ProjectionChart({ data, title = "Projeção Futura" }: Projectio
               </defs>
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
               <XAxis dataKey="month" className="text-xs" />
-              <YAxis className="text-xs" tickFormatter={(value) => `R$ ${value / 1000}k`} />
+              <YAxis className="text-xs" tickFormatter={(value) => CurrencyFormatter.format(value)} />
               <Tooltip content={<CustomTooltip />} />
               <Area
                 type="monotone"

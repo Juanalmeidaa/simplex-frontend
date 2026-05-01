@@ -20,7 +20,7 @@ export function MonthlyBarChart({ data, title = "Receitas vs Despesas" }: Monthl
           <p className="font-medium">{label}</p>
           {payload.map((item: any, index: number) => (
             <p key={index} className="text-sm" style={{ color: item.color }}>
-              {item.name}: {CurrencyFormatter.formatValue(item.value)}
+              {item.name}: {CurrencyFormatter.format(item.value)}
             </p>
           ))}
         </div>
@@ -45,7 +45,7 @@ export function MonthlyBarChart({ data, title = "Receitas vs Despesas" }: Monthl
               <BarChart data={data}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis dataKey="month" className="text-xs" />
-                <YAxis className="text-xs" tickFormatter={(value) => `R$ ${value / 1000}k`} />
+                <YAxis className="text-xs" tickFormatter={(value) => CurrencyFormatter.format(value)} />
                 <Tooltip content={<CustomTooltip />} />
                 <Legend />
                 <Bar dataKey="income" name="Receitas" fill="#22c55e" radius={[4, 4, 0, 0]} />

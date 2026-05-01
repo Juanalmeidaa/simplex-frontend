@@ -70,7 +70,7 @@ export default function RelatoriosPage() {
     {
       icon: PiggyBank,
       title: "Meta de Economia",
-      description: `Tente poupar ${Math.round(analysis.income * 0.2)} mensais (20% da renda)`,
+      description: `Tente poupar ${CurrencyFormatter.format(Math.round(analysis.income * 0.2))} mensais (20% da renda)`,
       color: "text-green-500",
       bgColor: "bg-green-500/10",
     },

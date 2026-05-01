@@ -22,7 +22,7 @@ export function ExpenseChart({ data, title = "Despesas por Categoria" }: Expense
         <div className="rounded-lg border bg-background p-3 shadow-lg">
           <p className="font-medium">{item.name}</p>
           <p className="text-sm text-muted-foreground">
-            {CurrencyFormatter.formatValue(item.value)}
+            {CurrencyFormatter.format(item.value)}
           </p>
           <p className="text-xs text-muted-foreground">{percentage}%</p>
         </div>
