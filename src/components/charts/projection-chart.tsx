@@ -2,6 +2,7 @@
 
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CurrencyFormatter } from "@/shared/formatters";
 
 interface ProjectionChartProps {
   data: {
@@ -20,7 +21,7 @@ export function ProjectionChart({ data, title = "Projeção Futura" }: Projectio
           <p className="font-medium">{label}</p>
           {payload.map((item: any, index: number) => (
             <p key={index} className="text-sm" style={{ color: item.color }}>
-              {item.name}: R$ {item.value.toLocaleString("pt-BR")}
+              {item.name}: {CurrencyFormatter.formatValue(item.value)}
             </p>
           ))}
         </div>

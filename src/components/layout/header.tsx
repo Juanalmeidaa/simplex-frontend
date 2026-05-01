@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuthStore, useUIStore } from "@/store";
-import { Bell, LogOut, Menu, Moon, Sun, User } from "lucide-react";
+import { Bell, LogOut, Menu, User, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -12,12 +12,23 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
+import { DateFormatter } from "@/shared/formatters";
+
+const PAGE_LABELS: Record<string, string> = {
+  "/dashboard": "Dashboard",
+  "/transacoes": "Transações",
+  "/relatorios": "Relatórios",
+  "/configuracoes": "Configurações",
+};
 
 export function Header() {
   const { user, logout } = useAuthStore();
   const { sidebarOpen, toggleSidebar } = useUIStore();
   const router = useRouter();
+  const pathname = usePathname();
+
+  const currentPage = PAGE_LABELS[pathname] || "Dashboard";
 
   const handleLogout = () => {
     logout();
@@ -44,7 +55,7 @@ export function Header() {
           
           <div className="flex flex-col">
             <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Dashboard
+              {currentPage}
             </span>
             <h1 className="text-xl font-bold tracking-tight">
               Olá, <span className="text-primary">{user?.name?.split(" ")[0] || "Usuário"}</span>
@@ -54,11 +65,7 @@ export function Header() {
 
         <div className="flex items-center gap-1">
           <span className="mr-4 text-sm text-muted-foreground">
-            {new Date().toLocaleDateString("pt-BR", {
-              weekday: "long",
-              day: "numeric",
-              month: "long",
-            })}
+            {DateFormatter.format(new Date())}
           </span>
 
           <Button
@@ -86,6 +93,12 @@ export function Header() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56 mt-2">
+              <DropdownMenuLabel>{user?.name}</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => router.push("/configuracoes")} className="cursor-pointer">
+                <Settings className="mr-2 h-4 w-4" />
+                Configurações
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout} className="text-destructive cursor-pointer">
                 <LogOut className="mr-2 h-4 w-4" />

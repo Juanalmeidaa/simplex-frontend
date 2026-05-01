@@ -3,11 +3,14 @@
 import { useEffect, useState } from "react";
 import { useAuthStore } from "@/store";
 import { useDashboardStore } from "@/store/dashboard-store";
+import { useTransactionStore } from "@/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ExpenseChart } from "@/components/charts/expense-chart";
 import { MonthlyBarChart } from "@/components/charts/monthly-chart";
-import { useTransactionStore } from "@/store";
+import { TransactionDialog } from "@/components/dashboard/TransactionDialog";
 import { Select } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
 import {
   TrendingUp,
   TrendingDown,
@@ -17,6 +20,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { CurrencyFormatter } from "@/shared/formatters";
 
 const OPCAO_MESES = [
   { value: "1", label: "Este mês" },
@@ -39,6 +43,8 @@ export default function DashboardPage() {
   } = useDashboardStore();
   const { transactions, fetchTransactions } = useTransactionStore();
   const [mesesSelecionados, setMesesSelecionados] = useState("6");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogType, setDialogType] = useState<'income' | 'expense'>('income');
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -119,18 +125,38 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-3">
         {stats.map((stat) => {
           const Icon = stat.icon;
+          const isIncome = stat.title === 'Receitas';
+          const isExpense = stat.title === 'Despesas';
+          
           return (
-            <Card key={stat.title}>
+            <Card key={stat.title} className="cursor-pointer hover:shadow-md transition-shadow">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div className={`rounded-lg p-2 ${stat.bgColor}`}>
                     <Icon className={`h-5 w-5 ${stat.color}`} />
                   </div>
+                  
+                  {(isIncome || isExpense) && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setDialogType(isIncome ? 'income' : 'expense')
+                        setDialogOpen(true)
+                      }}
+                      className={`text-xs h-7 ${
+                        isIncome ? 'text-green-600 hover:text-green-700 hover:bg-green-50' : 'text-red-600 hover:text-red-700 hover:bg-red-50'
+                      }`}
+                    >
+                      <Plus className="w-3 h-3 mr-1" />
+                      {isIncome ? 'Receita' : 'Despesa'}
+                    </Button>
+                  )}
                 </div>
                 <div className="mt-4">
                   <p className="text-sm text-muted-foreground">{stat.title}</p>
                   <p className="text-2xl font-bold">
-                    R$ {stat.value.toLocaleString("pt-BR")}
+                    {CurrencyFormatter.format(stat.value)}
                   </p>
                 </div>
               </CardContent>
@@ -187,8 +213,8 @@ export default function DashboardPage() {
                         transaction.type === "income" ? "text-green-500" : "text-red-500"
                       }`}
                     >
-                      {transaction.type === "income" ? "+" : "-"}R${" "}
-                      {transaction.amount.toLocaleString("pt-BR")}
+                      {transaction.type === "income" ? "+" : "-"}{" "}
+                      {CurrencyFormatter.formatValue(transaction.amount)}
                     </p>
                   </div>
                 ))}
@@ -240,6 +266,12 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      <TransactionDialog
+        type={dialogType}
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+      />
     </div>
   );
 }

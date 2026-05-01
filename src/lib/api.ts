@@ -21,28 +21,22 @@ class ApiError extends Error {
 function redirectToLogin() {
   if (typeof window !== 'undefined') {
     localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
     window.dispatchEvent(new Event('session-expired'));
     window.location.href = '/login';
   }
 }
 
 async function refreshAccessToken(): Promise<boolean> {
-  const refreshToken = typeof window !== 'undefined' ? localStorage.getItem('refreshToken') : null;
-  if (!refreshToken) return false;
-
   try {
     const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken }),
+      credentials: 'include',
     });
 
     if (!response.ok) return false;
 
     const data = await response.json();
     localStorage.setItem('accessToken', data.data.accessToken);
-    localStorage.setItem('refreshToken', data.data.refreshToken);
     return true;
   } catch {
     return false;
@@ -61,6 +55,7 @@ async function request<T>(
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       ...(token && !config.skipAuth && { Authorization: `Bearer ${token}` }),
@@ -87,6 +82,7 @@ async function request<T>(
       const newToken = localStorage.getItem('accessToken');
       const retryResponse = await fetch(`${API_BASE_URL}${endpoint}`, {
         ...options,
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${newToken}`,
@@ -137,7 +133,6 @@ export const api = {
     registrar: (data: { nome: string; email: string; senha: string }) =>
       request<{
         accessToken: string;
-        refreshToken: string;
         expiresIn: number;
         usuario: {
           id: string;
@@ -153,7 +148,6 @@ export const api = {
     login: (data: { email: string; senha: string }) =>
       request<{
         accessToken: string;
-        refreshToken: string;
         expiresIn: number;
         usuario: {
           id: string;
@@ -166,21 +160,15 @@ export const api = {
         body: JSON.stringify(data),
       }, { skipAuth: true }),
 
-    refresh: (refreshToken: string) =>
-      request<{
-        accessToken: string;
-        refreshToken: string;
-        expiresIn: number;
-      }>('/auth/refresh', {
-        method: 'POST',
-        body: JSON.stringify({ refreshToken }),
-      }, { skipAuth: true }),
-
-    logout: (refreshToken: string) =>
+    logout: () =>
       request<void>('/auth/logout', {
         method: 'POST',
-        body: JSON.stringify({ refreshToken }),
       }, { skipAuth: true }),
+
+    logoutAll: () =>
+      request<void>('/auth/logout-all', {
+        method: 'POST',
+      }),
   },
 
   usuarios: {

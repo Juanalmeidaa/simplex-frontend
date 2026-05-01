@@ -9,8 +9,6 @@ import {
   Receipt,
   PieChart,
   Settings,
-  ChevronLeft,
-  ChevronRight,
   Wallet,
 } from "lucide-react";
 

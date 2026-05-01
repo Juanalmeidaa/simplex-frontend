@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useTransactionStore, useAuthStore, useCategoryStore } from "@/store";
+import { useDashboardStore } from "@/store/dashboard-store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -29,10 +30,12 @@ import {
   Search,
   ArrowUpRight,
   ArrowDownRight,
-  X,
   Loader2,
+  X,
 } from "lucide-react";
+import { CurrencyFormatter, DateFormatter, CurrencyInputFormatter } from "@/shared/formatters";
 import { useRouter } from "next/navigation";
+import * as Dialog from "@radix-ui/react-dialog";
 
 export default function TransacoesPage() {
   const router = useRouter();
@@ -46,6 +49,7 @@ export default function TransacoesPage() {
     isLoading,
   } = useTransactionStore();
   const { categories, fetchCategories } = useCategoryStore();
+  const { fetchDashboardData } = useDashboardStore();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -100,7 +104,7 @@ export default function TransacoesPage() {
       setEditingId(transaction.id);
       setFormData({
         description: transaction.description,
-        amount: transaction.amount.toString(),
+        amount: CurrencyInputFormatter.fromStorage(transaction.amount),
         type: transaction.type,
         categoryId: transaction.categoryId,
         date: transaction.date.split("T")[0],
@@ -129,9 +133,11 @@ export default function TransacoesPage() {
     setSubmitting(true);
 
     try {
+      const valorEmCentavos = CurrencyInputFormatter.parseToCents(formData.amount);
+      
       const data = {
         descricao: formData.description,
-        valor: parseFloat(formData.amount),
+        valor: valorEmCentavos,
         tipo: formData.type === "income" ? "RECEITA" : "DESPESA",
         categoriaId: formData.categoryId,
         data: new Date(formData.date).toISOString(),
@@ -154,6 +160,9 @@ export default function TransacoesPage() {
           data: data.data,
         });
       }
+
+      fetchTransactions({ limite: 100 });
+      fetchDashboardData();
       closeModal();
     } catch (error) {
       console.error("Erro ao salvar transação:", error);
@@ -163,12 +172,15 @@ export default function TransacoesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm("Tem certeza que deseja excluir esta transação?")) {
-      try {
-        await deleteTransaction(id);
-      } catch (error) {
-        console.error("Erro ao deletar transação:", error);
-      }
+    if (!confirm("Tem certeza que deseja excluir esta transação?")) {
+      return;
+    }
+    try {
+      await deleteTransaction(id);
+      fetchTransactions({ limite: 100 });
+      fetchDashboardData();
+    } catch (error) {
+      console.error("Erro ao deletar transação:", error);
     }
   };
 
@@ -306,7 +318,7 @@ export default function TransacoesPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {new Date(transaction.date).toLocaleDateString("pt-BR")}
+                      {DateFormatter.format(transaction.date)}
                     </TableCell>
                     <TableCell
                       className={`text-right font-medium ${
@@ -315,8 +327,8 @@ export default function TransacoesPage() {
                           : "text-red-500"
                       }`}
                     >
-                      {transaction.type === "income" ? "+" : "-"}R${" "}
-                      {transaction.amount.toLocaleString("pt-BR")}
+                      {transaction.type === "income" ? "+" : "-"} {" "}
+                      {CurrencyFormatter.formatValue(transaction.amount)}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
@@ -345,115 +357,129 @@ export default function TransacoesPage() {
         </CardContent>
       </Card>
 
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <Card className="w-full max-w-md mx-4">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>
-                  {editingId ? "Editar Transação" : "Nova Transação"}
-                </CardTitle>
-                <Button variant="ghost" size="icon" onClick={closeModal}>
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-              <CardDescription>
-                {editingId
-                  ? "Atualize os dados da transação"
-                  : "Preencha os dados da transação"}
-              </CardDescription>
-            </CardHeader>
-            <form onSubmit={handleSubmit}>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Descrição</label>
-                  <Input
-                    placeholder="Ex: Salário Empresa"
-                    value={formData.description}
-                    onChange={(e) =>
-                      setFormData({ ...formData, description: e.target.value })
-                    }
-                    required
-                  />
+      <Dialog.Root open={isModalOpen} onOpenChange={(open) => { if (!open) closeModal(); }}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+          <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 mx-4 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <Dialog.Title asChild>
+                    <CardTitle>
+                      {editingId ? "Editar Transação" : "Nova Transação"}
+                    </CardTitle>
+                  </Dialog.Title>
+                  <Dialog.Close asChild>
+                    <Button variant="ghost" size="icon">
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </Dialog.Close>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Tipo</label>
-                  <Select
-                    value={formData.type}
-                    onChange={(e) => {
-                      const newType = e.target.value as TransactionType;
-                      const defaultCat = categories.find(
-                        (c) => c.tipo === (newType === "income" ? "RECEITA" : "DESPESA")
-                      );
-                      setFormData({
-                        ...formData,
-                        type: newType,
-                        categoryId: defaultCat?.id || "",
-                      });
-                    }}
-                    required
-                  >
-                    <option value="income">Receita</option>
-                    <option value="expense">Despesa</option>
-                  </Select>
+                <Dialog.Description asChild>
+                  <CardDescription>
+                    {editingId
+                      ? "Atualize os dados da transação"
+                      : "Preencha os dados da transação"}
+                  </CardDescription>
+                </Dialog.Description>
+              </CardHeader>
+              <form onSubmit={handleSubmit}>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Descrição</label>
+                    <Input
+                      placeholder="Ex: Salário Empresa"
+                      value={formData.description}
+                      onChange={(e) =>
+                        setFormData({ ...formData, description: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Tipo</label>
+                    <Select
+                      value={formData.type}
+                      onChange={(e) => {
+                        const newType = e.target.value as TransactionType;
+                        const defaultCat = categories.find(
+                          (c) => c.tipo === (newType === "income" ? "RECEITA" : "DESPESA")
+                        );
+                        setFormData({
+                          ...formData,
+                          type: newType,
+                          categoryId: defaultCat?.id || "",
+                        });
+                      }}
+                      required
+                    >
+                      <option value="income">Receita</option>
+                      <option value="expense">Despesa</option>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Categoria</label>
+                    <Select
+                      value={formData.categoryId}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          categoryId: e.target.value,
+                        })
+                      }
+                      required
+                    >
+                      {filteredCategories.map((cat) => (
+                        <option key={cat.id} value={cat.id}>
+                          {cat.nome}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Valor (R$)</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0,00"
+                      value={formData.amount}
+                      onChange={(e) =>
+                        setFormData({ ...formData, amount: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Data</label>
+                    <Input
+                      type="date"
+                      value={formData.date}
+                      onChange={(e) =>
+                        setFormData({ ...formData, date: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                </CardContent>
+                <div className="p-6 pt-0 flex gap-3">
+                  <Dialog.Close asChild>
+                    <Button type="button" variant="outline" className="flex-1">
+                      Cancelar
+                    </Button>
+                  </Dialog.Close>
+                  <Button type="submit" className="flex-1" disabled={submitting}>
+                    {submitting ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : null}
+                    {editingId ? "Salvar Alterações" : "Adicionar Transação"}
+                  </Button>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Categoria</label>
-                  <Select
-                    value={formData.categoryId}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        categoryId: e.target.value,
-                      })
-                    }
-                    required
-                  >
-                    {filteredCategories.map((cat) => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.nome}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Valor (R$)</label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="0,00"
-                    value={formData.amount}
-                    onChange={(e) =>
-                      setFormData({ ...formData, amount: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Data</label>
-                  <Input
-                    type="date"
-                    value={formData.date}
-                    onChange={(e) =>
-                      setFormData({ ...formData, date: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-              </CardContent>
-              <div className="p-6 pt-0">
-                <Button type="submit" className="w-full" disabled={submitting}>
-                  {submitting ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : null}
-                  {editingId ? "Salvar Alterações" : "Adicionar Transação"}
-                </Button>
-              </div>
-            </form>
-          </Card>
-        </div>
-      )}
+              </form>
+            </Card>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     </div>
   );
 }

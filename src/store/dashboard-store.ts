@@ -27,9 +27,9 @@ function mapToCategoryData(estatisticas: { categoriaId: string; categoriaNome: s
 function mapToMonthlyData(estatisticas: { nomeMes: string; totalReceitas: number; totalDespesas: number }[]): MonthlyData[] {
   return estatisticas.map((stat) => ({
     month: stat.nomeMes,
-    income: Number(stat.totalReceitas) || 0,
-    expense: Number(stat.totalDespesas) || 0,
-    balance: (Number(stat.totalReceitas) || 0) - (Number(stat.totalDespesas) || 0),
+    income: Math.round(Number(stat.totalReceitas) || 0),
+    expense: Math.round(Number(stat.totalDespesas) || 0),
+    balance: Math.round((Number(stat.totalReceitas) || 0) - (Number(stat.totalDespesas) || 0)),
   }));
 }
 

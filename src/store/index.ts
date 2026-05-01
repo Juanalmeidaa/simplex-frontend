@@ -229,9 +229,8 @@ export const useAuthStore = create<AuthStore>()(
 
       validateSession: () => {
         const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-        const refreshToken = typeof window !== 'undefined' ? localStorage.getItem('refreshToken') : null;
 
-        if (!accessToken && !refreshToken) {
+        if (!accessToken) {
           set({ user: null, isAuthenticated: false });
           return;
         }
@@ -239,7 +238,6 @@ export const useAuthStore = create<AuthStore>()(
         if (typeof window !== 'undefined') {
           window.addEventListener('session-expired', () => {
             localStorage.removeItem('accessToken');
-            localStorage.removeItem('refreshToken');
             set({ user: null, isAuthenticated: false });
           });
         }
@@ -251,7 +249,6 @@ export const useAuthStore = create<AuthStore>()(
           const response = await api.auth.login({ email, senha: password });
 
           localStorage.setItem("accessToken", response.accessToken);
-          localStorage.setItem("refreshToken", response.refreshToken);
 
           set({
             user: {
@@ -278,7 +275,6 @@ export const useAuthStore = create<AuthStore>()(
           const response = await api.auth.registrar({ nome: name, email, senha: password });
 
           localStorage.setItem("accessToken", response.accessToken);
-          localStorage.setItem("refreshToken", response.refreshToken);
 
           set({
             user: {
@@ -300,12 +296,8 @@ export const useAuthStore = create<AuthStore>()(
       },
 
       logout: () => {
-        const refreshToken = localStorage.getItem("refreshToken");
-        if (refreshToken) {
-          api.auth.logout(refreshToken).catch(() => {});
-        }
+        api.auth.logout().catch(() => {});
         localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
         set({ user: null, isAuthenticated: false });
       },
 

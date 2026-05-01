@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuthStore } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,13 +11,52 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { User, Bell, Shield, Palette, Save } from "lucide-react";
+import { User, Bell, Shield, Palette, Save, Sun, Moon, Monitor } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Select } from "@/components/ui/select";
+
+type Theme = "light" | "dark" | "system";
 
 export default function ConfiguracoesPage() {
   const { user } = useAuthStore();
   const [name, setName] = useState(user?.name || "");
   const [email, setEmail] = useState(user?.email || "");
   const [isSaving, setIsSaving] = useState(false);
+  const [theme, setTheme] = useState<Theme>("light");
+
+  useEffect(() => {
+    const stored = localStorage.getItem("simplex-theme") as Theme | null;
+    if (stored) {
+      setTheme(stored);
+    } else if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+      setTheme("system");
+    }
+  }, []);
+
+  const applyTheme = useCallback((t: Theme) => {
+    const root = document.documentElement;
+    if (t === "dark") {
+      root.classList.add("dark");
+    } else if (t === "light") {
+      root.classList.remove("dark");
+    } else {
+      if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+        root.classList.add("dark");
+      } else {
+        root.classList.remove("dark");
+      }
+    }
+  }, []);
+
+  const handleThemeChange = (t: Theme) => {
+    setTheme(t);
+    localStorage.setItem("simplex-theme", t);
+    applyTheme(t);
+  };
+
+  useEffect(() => {
+    applyTheme(theme);
+  }, [theme, applyTheme]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,7 +128,7 @@ export default function ConfiguracoesPage() {
                   Receba notificações de gastos elevados
                 </p>
               </div>
-              <input type="checkbox" defaultChecked className="toggle" />
+              <Switch defaultChecked />
             </div>
             <div className="flex items-center justify-between">
               <div>
@@ -98,7 +137,7 @@ export default function ConfiguracoesPage() {
                   Receba um resumo do seu mês por email
                 </p>
               </div>
-              <input type="checkbox" defaultChecked className="toggle" />
+              <Switch defaultChecked />
             </div>
             <div className="flex items-center justify-between">
               <div>
@@ -107,7 +146,7 @@ export default function ConfiguracoesPage() {
                   Alertas para contas a vencer
                 </p>
               </div>
-              <input type="checkbox" className="toggle" />
+              <Switch />
             </div>
           </CardContent>
         </Card>
@@ -151,31 +190,49 @@ export default function ConfiguracoesPage() {
               <div className="grid grid-cols-3 gap-2">
                 <button
                   type="button"
-                  className="rounded-lg border-2 border-primary p-4 text-sm font-medium"
+                  onClick={() => handleThemeChange("light")}
+                  className={`flex flex-col items-center gap-2 rounded-lg border-2 p-4 text-sm font-medium transition-colors ${
+                    theme === "light"
+                      ? "border-primary bg-primary/5 text-primary"
+                      : "border-border hover:bg-muted"
+                  }`}
                 >
+                  <Sun className="h-5 w-5" />
                   Claro
                 </button>
                 <button
                   type="button"
-                  className="rounded-lg border p-4 text-sm font-medium"
+                  onClick={() => handleThemeChange("dark")}
+                  className={`flex flex-col items-center gap-2 rounded-lg border-2 p-4 text-sm font-medium transition-colors ${
+                    theme === "dark"
+                      ? "border-primary bg-primary/5 text-primary"
+                      : "border-border hover:bg-muted"
+                  }`}
                 >
+                  <Moon className="h-5 w-5" />
                   Escuro
                 </button>
                 <button
                   type="button"
-                  className="rounded-lg border p-4 text-sm font-medium"
+                  onClick={() => handleThemeChange("system")}
+                  className={`flex flex-col items-center gap-2 rounded-lg border-2 p-4 text-sm font-medium transition-colors ${
+                    theme === "system"
+                      ? "border-primary bg-primary/5 text-primary"
+                      : "border-border hover:bg-muted"
+                  }`}
                 >
+                  <Monitor className="h-5 w-5" />
                   Sistema
                 </button>
               </div>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Moeda</label>
-              <select className="w-full rounded-md border p-2">
+              <Select defaultValue="BRL">
                 <option value="BRL">Real Brasileiro (R$)</option>
                 <option value="USD">Dólar Americano ($)</option>
                 <option value="EUR">Euro (€)</option>
-              </select>
+              </Select>
             </div>
           </CardContent>
         </Card>

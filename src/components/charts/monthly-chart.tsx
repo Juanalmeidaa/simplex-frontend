@@ -3,6 +3,7 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MonthlyData } from "@/types";
+import { CurrencyFormatter } from "@/shared/formatters";
 
 interface MonthlyBarChartProps {
   data: MonthlyData[];
@@ -19,7 +20,7 @@ export function MonthlyBarChart({ data, title = "Receitas vs Despesas" }: Monthl
           <p className="font-medium">{label}</p>
           {payload.map((item: any, index: number) => (
             <p key={index} className="text-sm" style={{ color: item.color }}>
-              {item.name}: R$ {item.value.toLocaleString("pt-BR")}
+              {item.name}: {CurrencyFormatter.formatValue(item.value)}
             </p>
           ))}
         </div>

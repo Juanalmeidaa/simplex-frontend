@@ -3,6 +3,7 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CategoryData } from "@/types";
+import { CurrencyFormatter } from "@/shared/formatters";
 
 interface ExpenseChartProps {
   data: CategoryData[];
@@ -21,7 +22,7 @@ export function ExpenseChart({ data, title = "Despesas por Categoria" }: Expense
         <div className="rounded-lg border bg-background p-3 shadow-lg">
           <p className="font-medium">{item.name}</p>
           <p className="text-sm text-muted-foreground">
-            R$ {item.value.toLocaleString("pt-BR")}
+            {CurrencyFormatter.formatValue(item.value)}
           </p>
           <p className="text-xs text-muted-foreground">{percentage}%</p>
         </div>

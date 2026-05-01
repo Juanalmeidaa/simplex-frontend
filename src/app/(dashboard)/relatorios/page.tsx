@@ -14,6 +14,7 @@ import {
   DollarSign,
   PiggyBank,
 } from "lucide-react";
+import { CurrencyFormatter } from "@/shared/formatters";
 
 export default function RelatoriosPage() {
   const { transactions } = useTransactionStore();
@@ -78,7 +79,7 @@ export default function RelatoriosPage() {
       title: "Reduzir Gastos",
       description:
         analysis.highestCategory
-          ? `Atenção com ${analysis.highestCategory.name} (R$ ${analysis.highestCategory.value.toLocaleString("pt-BR")})`
+          ? `Atenção com ${analysis.highestCategory.name} (${CurrencyFormatter.format(analysis.highestCategory.value)})`
           : "Continue controlando seus gastos",
       color: "text-red-500",
       bgColor: "bg-red-500/10",
@@ -131,7 +132,7 @@ export default function RelatoriosPage() {
               <div>
                 <p className="text-sm text-muted-foreground">Total Receitas</p>
                 <p className="text-xl font-bold text-green-500">
-                  R$ {analysis.income.toLocaleString("pt-BR")}
+                  {CurrencyFormatter.format(analysis.income)}
                 </p>
               </div>
             </div>
@@ -147,7 +148,7 @@ export default function RelatoriosPage() {
               <div>
                 <p className="text-sm text-muted-foreground">Total Despesas</p>
                 <p className="text-xl font-bold text-red-500">
-                  R$ {analysis.expense.toLocaleString("pt-BR")}
+                  {CurrencyFormatter.format(analysis.expense)}
                 </p>
               </div>
             </div>
@@ -167,7 +168,7 @@ export default function RelatoriosPage() {
                     analysis.balance >= 0 ? "text-green-500" : "text-red-500"
                   }`}
                 >
-                  R$ {analysis.balance.toLocaleString("pt-BR")}
+                  {CurrencyFormatter.format(analysis.balance)}
                 </p>
               </div>
             </div>
