@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ExpenseChart } from "@/components/charts/expense-chart";
 import { MonthlyBarChart } from "@/components/charts/monthly-chart";
 import { TransactionDialog } from "@/components/dashboard/TransactionDialog";
+import { RecentTransactions } from "@/components/transactions/RecentTransactions";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
@@ -15,8 +16,6 @@ import {
   TrendingUp,
   TrendingDown,
   Wallet,
-  ArrowUpRight,
-  ArrowDownRight,
   Loader2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -41,7 +40,10 @@ export default function DashboardPage() {
     isLoading,
     error,
   } = useDashboardStore();
-  const { transactions, fetchTransactions } = useTransactionStore();
+  const {
+    recentTransactions,
+    fetchRecentTransactions,
+  } = useTransactionStore();
   const [mesesSelecionados, setMesesSelecionados] = useState("6");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogType, setDialogType] = useState<'income' | 'expense'>('income');
@@ -52,7 +54,7 @@ export default function DashboardPage() {
       return;
     }
 
-    fetchTransactions({ limite: 100 });
+    fetchRecentTransactions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, router]);
 
@@ -61,7 +63,7 @@ export default function DashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mesesSelecionados]);
 
-  const balance = statistics.totalReceitas - statistics.totalDespesas;
+  const balance = statistics.saldo;
 
   const stats = [
     {
@@ -87,7 +89,7 @@ export default function DashboardPage() {
     },
   ];
 
-  if (isLoading && transactions.length === 0) {
+  if (isLoading && recentTransactions.length === 0) {
     return (
       <div className="flex h-[50vh] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -171,57 +173,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Últimas Transações</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {transactions.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Nenhuma transação encontrada.
-              </p>
-            ) : (
-              <div className="space-y-4">
-                {transactions.slice(0, 5).map((transaction) => (
-                  <div
-                    key={transaction.id}
-                    className="flex items-center justify-between border-b pb-3 last:border-0 last:pb-0"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`rounded-full p-2 ${
-                          transaction.type === "income"
-                            ? "bg-green-500/10"
-                            : "bg-red-500/10"
-                        }`}
-                      >
-                        {transaction.type === "income" ? (
-                          <ArrowUpRight className="h-4 w-4 text-green-500" />
-                        ) : (
-                          <ArrowDownRight className="h-4 w-4 text-red-500" />
-                        )}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">{transaction.description}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {transaction.categoryName || transaction.category}
-                        </p>
-                      </div>
-                    </div>
-                    <p
-                      className={`font-medium ${
-                        transaction.type === "income" ? "text-green-500" : "text-red-500"
-                      }`}
-                    >
-                      {transaction.type === "income" ? "+" : "-"}{" "}
-                      {CurrencyFormatter.format(transaction.amount)}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <RecentTransactions transactions={recentTransactions} />
 
         <Card>
           <CardHeader>

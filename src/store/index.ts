@@ -5,6 +5,7 @@ import { api } from "@/lib/api";
 
 interface TransactionStore {
   transactions: Transaction[];
+  recentTransactions: Transaction[];
   isLoading: boolean;
   error: string | null;
   pagination: {
@@ -12,14 +13,20 @@ interface TransactionStore {
     pagina: number;
     limite: number;
     totalPaginas: number;
+    hasProximaPagina: boolean;
+    hasPaginaAnterior: boolean;
   };
   fetchTransactions: (params?: {
     pagina?: number;
     limite?: number;
     tipo?: "income" | "expense";
     categoriaId?: string;
+    data?: string;
     busca?: string;
+    dataInicio?: string;
+    dataFim?: string;
   }) => Promise<void>;
+  fetchRecentTransactions: () => Promise<void>;
   addTransaction: (data: {
     descricao: string;
     valor: number;
@@ -65,13 +72,13 @@ function mapApiTransaction(apiTransacao: {
   return {
     id: apiTransacao.id,
     description: apiTransacao.descricao,
-    amount: apiTransacao.valor,
+    amount: apiTransacao.valor * 100, // backend returns reais, store uses centavos
     type: apiTransacao.tipo === "RECEITA" ? "income" : "expense",
     category: apiTransacao.categoria.nome.toLowerCase() as Transaction["category"],
     categoryId: apiTransacao.categoriaId,
     categoryName: apiTransacao.categoria.nome,
     categoryColor: apiTransacao.categoria.cor,
-    date: apiTransacao.data,
+    date: apiTransacao.data.split('T')[0] || apiTransacao.data,
     createdAt: apiTransacao.criadoEm,
     updatedAt: apiTransacao.atualizadoEm,
   };
@@ -80,53 +87,76 @@ function mapApiTransaction(apiTransacao: {
 export const useTransactionStore = create<TransactionStore>()(
   persist(
     (set, get) => ({
-      transactions: [],
-      isLoading: false,
-      error: null,
-      pagination: {
+  transactions: [],
+  recentTransactions: [],
+  isLoading: false,
+  error: null,
+  pagination: {
         total: 0,
         pagina: 1,
         limite: 20,
         totalPaginas: 0,
+        hasProximaPagina: false,
+        hasPaginaAnterior: false,
       },
 
-      fetchTransactions: async (params) => {
-        set({ isLoading: true, error: null });
-        try {
-          const apiParams: Record<string, string | number> = {};
-          if (params?.pagina) apiParams.pagina = params.pagina;
-          if (params?.limite) apiParams.limite = params.limite;
-          if (params?.tipo) apiParams.tipo = params.tipo === "income" ? "RECEITA" : "DESPESA";
-          if (params?.categoriaId) apiParams.categoriaId = params.categoriaId;
-          if (params?.busca) apiParams.busca = params.busca;
+    fetchTransactions: async (params) => {
+      set({ isLoading: true, error: null });
+      try {
+        const apiParams: Record<string, string | number> = {};
+        if (params?.pagina) apiParams.pagina = params.pagina;
+        if (params?.limite) apiParams.limite = params.limite;
+        if (params?.tipo) apiParams.tipo = params.tipo === "income" ? "RECEITA" : "DESPESA";
+        if (params?.categoriaId) apiParams.categoriaId = params.categoriaId;
+        if (params?.busca) apiParams.busca = params.busca;
+        if (params?.data) apiParams.data = params.data;
+        if (params?.dataInicio) apiParams.dataInicio = params.dataInicio;
+        if (params?.dataFim) apiParams.dataFim = params.dataFim;
 
           const response = await api.transacoes.listar(apiParams);
 
-          set({
-            transactions: response.items.map(mapApiTransaction),
-            pagination: response.paginacao,
-            isLoading: false,
-          });
-        } catch (error) {
-          set({
-            error: error instanceof Error ? error.message : "Erro ao buscar transações",
-            isLoading: false,
-          });
-        }
-      },
+      set({
+        transactions: response.items.map(mapApiTransaction),
+        pagination: {
+          total: response.paginacao.total,
+          pagina: response.paginacao.pagina,
+          limite: response.paginacao.limite,
+          totalPaginas: response.paginacao.totalPaginas,
+          hasProximaPagina: response.paginacao.hasProximaPagina,
+          hasPaginaAnterior: response.paginacao.hasPaginaAnterior,
+        },
+        isLoading: false,
+      });
+      } catch (error) {
+        set({
+          error: error instanceof Error ? error.message : "Erro ao buscar transações",
+          isLoading: false,
+        });
+      }
+    },
 
-      addTransaction: async (data) => {
-        set({ isLoading: true, error: null });
-        try {
-          const apiData = {
-            descricao: data.descricao,
-            valor: data.valor,
-            tipo: data.tipo === "income" ? "RECEITA" as const : "DESPESA" as const,
-            categoriaId: data.categoriaId,
-            data: new Date(data.data).toISOString(),
-          };
+    fetchRecentTransactions: async () => {
+      try {
+        const response = await api.transacoes.listar({ limite: 5, pagina: 1 });
+        set({ recentTransactions: response.items.map(mapApiTransaction) });
+      } catch {
+        // silent — recent transactions are non-critical
+      }
+    },
 
-          const response = await api.transacoes.criar(apiData);
+    addTransaction: async (data) => {
+      set({ isLoading: true, error: null });
+      try {
+        const apiData = {
+          descricao: data.descricao,
+          valor: data.valor / 100, // store uses centavos, API expects reais
+          tipo: data.tipo === "income" ? "RECEITA" as const : "DESPESA" as const,
+          categoriaId: data.categoriaId,
+          data: data.data.includes('T') ? data.data.split('T')[0]! : data.data,
+        };
+
+        const idempotencyKey = crypto.randomUUID();
+        const response = await api.transacoes.criar(apiData, idempotencyKey);
           const newTransaction = mapApiTransaction({
             ...response,
             usuarioId: "",
@@ -146,15 +176,15 @@ export const useTransactionStore = create<TransactionStore>()(
         }
       },
 
-      updateTransaction: async (id, data) => {
-        set({ isLoading: true, error: null });
-        try {
-          const apiData: Record<string, unknown> = {};
-          if (data.descricao) apiData.descricao = data.descricao;
-          if (data.valor) apiData.valor = data.valor;
-          if (data.tipo) apiData.tipo = data.tipo === "income" ? "RECEITA" : "DESPESA";
-          if (data.categoriaId) apiData.categoriaId = data.categoriaId;
-          if (data.data) apiData.data = new Date(data.data).toISOString();
+    updateTransaction: async (id, data) => {
+      set({ isLoading: true, error: null });
+      try {
+        const apiData: Record<string, unknown> = {};
+        if (data.descricao) apiData.descricao = data.descricao;
+        if (data.valor) apiData.valor = data.valor / 100; // store uses centavos, API expects reais
+        if (data.tipo) apiData.tipo = data.tipo === "income" ? "RECEITA" : "DESPESA";
+        if (data.categoriaId) apiData.categoriaId = data.categoriaId;
+        if (data.data) apiData.data = data.data.includes('T') ? data.data.split('T')[0]! : data.data;
 
           const response = await api.transacoes.atualizar(id, apiData);
           const updatedTransaction = mapApiTransaction({
@@ -177,23 +207,24 @@ export const useTransactionStore = create<TransactionStore>()(
         }
       },
 
-      deleteTransaction: async (id) => {
-        set({ isLoading: true, error: null });
-        try {
-          await api.transacoes.deletar(id);
-          set((state) => ({
-            transactions: state.transactions.filter((t) => t.id !== id),
-            pagination: { ...state.pagination, total: state.pagination.total - 1 },
-            isLoading: false,
-          }));
-        } catch (error) {
-          set({
-            error: error instanceof Error ? error.message : "Erro ao deletar transação",
-            isLoading: false,
-          });
-          throw error;
-        }
-      },
+    deleteTransaction: async (id) => {
+      set({ isLoading: true, error: null });
+      try {
+        await api.transacoes.deletar(id);
+        set((state) => ({
+          transactions: state.transactions.filter((t) => t.id !== id),
+          recentTransactions: state.recentTransactions.filter((t) => t.id !== id),
+          pagination: { ...state.pagination, total: state.pagination.total - 1 },
+          isLoading: false,
+        }));
+      } catch (error) {
+        set({
+          error: error instanceof Error ? error.message : "Erro ao deletar transação",
+          isLoading: false,
+        });
+        throw error;
+      }
+    },
 
       getTransactionById: (id) => {
         return get().transactions.find((t) => t.id === id);

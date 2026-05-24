@@ -16,7 +16,7 @@ function mapToCategoryData(estatisticas: CategoryStatistics[]): CategoryData[] {
   return estatisticas.map((stat) => ({
     id: stat.categoriaId,
     name: stat.categoriaNome,
-    value: Number(stat.total),
+    value: Math.round(Number(stat.total) * 100),
     color: stat.categoriaCor,
   }));
 }
@@ -24,9 +24,9 @@ function mapToCategoryData(estatisticas: CategoryStatistics[]): CategoryData[] {
 function mapToMonthlyData(estatisticas: MonthlyStatistics[]): MonthlyData[] {
   return estatisticas.map((stat) => ({
     month: stat.nomeMes,
-    income: Number(stat.totalReceitas),
-    expense: Number(stat.totalDespesas),
-    balance: Number(stat.totalReceitas) - Number(stat.totalDespesas),
+    income: Math.round(Number(stat.totalReceitas) * 100),
+    expense: Math.round(Number(stat.totalDespesas) * 100),
+    balance: Math.round((Number(stat.totalReceitas) - Number(stat.totalDespesas)) * 100),
   }));
 }
 

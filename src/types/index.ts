@@ -15,13 +15,13 @@ export type TransactionCategory =
 export interface Transaction {
   id: string;
   description: string;
-  amount: number;
+  amount: number; // em centavos
   type: TransactionType;
   category: TransactionCategory;
   categoryId: string;
   categoryName?: string;
   categoryColor?: string;
-  date: string;
+  date: string; // YYYY-MM-DD
   createdAt: string;
   updatedAt: string;
 }

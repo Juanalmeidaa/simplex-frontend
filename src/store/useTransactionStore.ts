@@ -87,10 +87,10 @@ export const useTransactionStore = create<TransactionStore>((set, get) => ({
     return get().getTotalIncome() - get().getTotalExpenses()
   },
 
-  formatCurrency: (cents: number) => {
+  formatCurrency: (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL',
-    }).format(cents / 100)
+    }).format(value)
   },
 }))

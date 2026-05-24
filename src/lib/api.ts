@@ -4,6 +4,7 @@ interface RequestConfig {
   headers?: Record<string, string>;
   signal?: AbortSignal;
   skipAuth?: boolean;
+  idempotencyKey?: string;
 }
 
 class ApiError extends Error {
@@ -65,7 +66,7 @@ async function request<T>(
   });
 
   if (response.status === 204) {
-    return {} as T;
+    return undefined as T;
   }
 
   if (response.status === 401 && !config.skipAuth) {
@@ -258,6 +259,7 @@ export const api = {
       limite?: number;
       tipo?: 'RECEITA' | 'DESPESA';
       categoriaId?: string;
+      data?: string;
       dataInicio?: string;
       dataFim?: string;
       busca?: string;
@@ -298,10 +300,11 @@ export const api = {
 
     estatisticas: (params?: { mes?: number; ano?: number }) => {
       const query = params ? '?' + new URLSearchParams(params as Record<string, string>) : '';
-      return request<{
-        totalReceitas: number;
-        totalDespesas: number;
-      }>(`/transacoes/estatisticas${query}`);
+    return request<{
+      totalReceitas: number;
+      totalDespesas: number;
+      saldo: number;
+    }>(`/transacoes/estatisticas${query}`);
     },
 
     estatisticasPorCategoria: (params: { tipo: 'RECEITA' | 'DESPESA'; mes?: number; ano?: number }) => {
@@ -339,31 +342,34 @@ export const api = {
       tipo: 'RECEITA' | 'DESPESA';
       categoriaId: string;
       data: string;
-    }) =>
-      request<{
+    }, idempotencyKey?: string) =>
+    request<{
+      id: string;
+      descricao: string;
+      valor: number;
+      tipo: 'RECEITA' | 'DESPESA';
+      data: string;
+      categoriaId: string;
+      usuarioId: string;
+      criadoEm: string;
+      atualizadoEm: string;
+      categoria: {
         id: string;
-        descricao: string;
-        valor: number;
+        nome: string;
+        cor: string;
+        icone: string | null;
         tipo: 'RECEITA' | 'DESPESA';
-        data: string;
-        categoriaId: string;
-        usuarioId: string;
+        isPadrao: boolean;
+        usuarioId: string | null;
         criadoEm: string;
-        atualizadoEm: string;
-        categoria: {
-          id: string;
-          nome: string;
-          cor: string;
-          icone: string | null;
-          tipo: 'RECEITA' | 'DESPESA';
-          isPadrao: boolean;
-          usuarioId: string | null;
-          criadoEm: string;
-        };
-      }>('/transacoes', {
-        method: 'POST',
-        body: JSON.stringify(data),
+      };
+    }>('/transacoes', {
+      method: 'POST',
+      body: JSON.stringify(data),
+      ...(idempotencyKey && {
+        headers: { 'Idempotency-Key': idempotencyKey },
       }),
+    }),
 
     atualizar: (
       id: string,
@@ -401,7 +407,27 @@ export const api = {
       }),
 
     deletar: (id: string) =>
-      request<void>(`/transacoes/${id}`, { method: 'DELETE' }),
+    request<{
+      id: string;
+      descricao: string;
+      valor: number;
+      tipo: 'RECEITA' | 'DESPESA';
+      data: string;
+      categoriaId: string;
+      usuarioId: string;
+      criadoEm: string;
+      atualizadoEm: string;
+      categoria: {
+        id: string;
+        nome: string;
+        cor: string;
+        icone: string | null;
+        tipo: 'RECEITA' | 'DESPESA';
+        isPadrao: boolean;
+        usuarioId: string | null;
+        criadoEm: string;
+      };
+    }>(`/transacoes/${id}`, { method: 'DELETE' }),
   },
 };
 

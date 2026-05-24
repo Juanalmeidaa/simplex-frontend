@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
-import { CurrencyInputFormatter } from '@/shared/formatters'
+import { CurrencyInputFormatter, DateFormatter } from '@/shared/formatters'
 import { useCategoryStore, useTransactionStore } from '@/store'
 import { useDashboardStore } from '@/store/dashboard-store'
 
@@ -21,14 +21,14 @@ interface TransactionDialogProps {
 export function TransactionDialog({ type, open, onOpenChange }: TransactionDialogProps) {
   const [isLoading, setIsLoading] = useState(false)
   const { categories, fetchCategories } = useCategoryStore()
-  const { addTransaction, fetchTransactions } = useTransactionStore()
+  const { addTransaction, fetchTransactions, fetchRecentTransactions } = useTransactionStore()
   const { fetchDashboardData } = useDashboardStore()
 
   const [formData, setFormData] = useState({
     amount: '',
     description: '',
     categoryId: '',
-    date: new Date().toISOString().split('T')[0],
+    date: DateFormatter.nowBrasilia(),
   })
 
   const filteredCategories = categories.filter(
@@ -38,12 +38,12 @@ export function TransactionDialog({ type, open, onOpenChange }: TransactionDialo
   useEffect(() => {
     if (open) {
       fetchCategories()
-      setFormData({
-        amount: '',
-        description: '',
-        categoryId: filteredCategories[0]?.id || '',
-        date: new Date().toISOString().split('T')[0],
-      })
+    setFormData({
+      amount: '',
+      description: '',
+      categoryId: filteredCategories[0]?.id || '',
+      date: DateFormatter.nowBrasilia(),
+    })
     }
   }, [open, type, fetchCategories])
 
@@ -58,7 +58,7 @@ export function TransactionDialog({ type, open, onOpenChange }: TransactionDialo
     setIsLoading(true)
 
     try {
-      const valor = CurrencyInputFormatter.parseToCents(formData.amount)
+      const valor = CurrencyInputFormatter.parse(formData.amount)
       
       if (valor <= 0) {
         toast.error('Valor deve ser maior que zero')
@@ -78,16 +78,17 @@ export function TransactionDialog({ type, open, onOpenChange }: TransactionDialo
         return
       }
 
-      await addTransaction({
-        descricao: formData.description,
-        valor,
-        tipo: type,
-        categoriaId: formData.categoryId,
-        data: new Date(formData.date).toISOString(),
-      })
+    await addTransaction({
+      descricao: formData.description,
+      valor: Math.round(valor * 100),
+      tipo: type,
+      categoriaId: formData.categoryId,
+      data: DateFormatter.toAPI(formData.date),
+    })
 
       fetchTransactions({ limite: 100 })
       fetchDashboardData()
+      fetchRecentTransactions()
 
       toast.success(type === 'income' ? 'Receita adicionada!' : 'Despesa adicionada!')
       onOpenChange(false)

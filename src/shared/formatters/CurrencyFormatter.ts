@@ -7,7 +7,7 @@ export class CurrencyFormatter {
   });
 
   static format(cents: number): string {
-    return this.formatter.format(cents / 100);
+    return this.formatter.format(Math.round(cents) / 100);
   }
 
   static formatValue(value: number): string {
@@ -21,7 +21,14 @@ export class CurrencyFormatter {
       .replace(/\./g, '')
       .replace(',', '.');
 
-    const parsed = parseFloat(cleaned);
-    return Math.round(parsed * 100);
+    const parts = cleaned.split('.');
+    if (parts.length === 1) {
+      return Math.round(Number(parts[0]) * 100);
+    }
+
+    const integerPart = parts[0]!;
+    const decimalPart = (parts[1] || '').padEnd(2, '0').slice(0, 2);
+    const cents = parseInt(integerPart + decimalPart, 10);
+    return isNaN(cents) ? 0 : cents;
   }
 }

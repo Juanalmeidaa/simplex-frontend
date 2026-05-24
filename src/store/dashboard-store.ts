@@ -8,6 +8,7 @@ interface DashboardStore {
   statistics: {
     totalReceitas: number;
     totalDespesas: number;
+    saldo: number;
   };
   isLoading: boolean;
   error: string | null;
@@ -19,7 +20,7 @@ function mapToCategoryData(estatisticas: { categoriaId: string; categoriaNome: s
   return estatisticas.map((stat) => ({
     id: stat.categoriaId,
     name: stat.categoriaNome,
-    value: Number(stat.total),
+    value: Math.round(Number(stat.total) * 100),
     color: stat.categoriaCor,
   }));
 }
@@ -27,9 +28,9 @@ function mapToCategoryData(estatisticas: { categoriaId: string; categoriaNome: s
 function mapToMonthlyData(estatisticas: { nomeMes: string; totalReceitas: number; totalDespesas: number }[]): MonthlyData[] {
   return estatisticas.map((stat) => ({
     month: stat.nomeMes,
-    income: Math.round(Number(stat.totalReceitas) || 0),
-    expense: Math.round(Number(stat.totalDespesas) || 0),
-    balance: Math.round((Number(stat.totalReceitas) || 0) - (Number(stat.totalDespesas) || 0)),
+    income: Math.round((Number(stat.totalReceitas) || 0) * 100),
+    expense: Math.round((Number(stat.totalDespesas) || 0) * 100),
+    balance: Math.round(((Number(stat.totalReceitas) || 0) - (Number(stat.totalDespesas) || 0)) * 100),
   }));
 }
 
@@ -39,6 +40,7 @@ export const useDashboardStore = create<DashboardStore>()((set) => ({
   statistics: {
     totalReceitas: 0,
     totalDespesas: 0,
+    saldo: 0,
   },
   isLoading: false,
   error: null,
@@ -55,16 +57,20 @@ export const useDashboardStore = create<DashboardStore>()((set) => ({
 
       const monthlyData = monthlyResponse.status === 'fulfilled' ? mapToMonthlyData(monthlyResponse.value) : [];
       const categoryData = categoryResponse.status === 'fulfilled' ? mapToCategoryData(categoryResponse.value) : [];
-      const statistics = statisticsResponse.status === 'fulfilled' 
-        ? { totalReceitas: Number(statisticsResponse.value.totalReceitas) || 0, totalDespesas: Number(statisticsResponse.value.totalDespesas) || 0 }
-        : { totalReceitas: 0, totalDespesas: 0 };
+      const statistics = statisticsResponse.status === 'fulfilled'
+      ? {
+        totalReceitas: Math.round(Number(statisticsResponse.value.totalReceitas) * 100) || 0,
+        totalDespesas: Math.round(Number(statisticsResponse.value.totalDespesas) * 100) || 0,
+        saldo: Math.round(Number(statisticsResponse.value.saldo) * 100) || 0,
+      }
+      : { totalReceitas: 0, totalDespesas: 0, saldo: 0 };
 
       set({
         monthlyData,
         categoryData,
         statistics,
         isLoading: false,
-        error: monthlyData.length === 0 && categoryData.length === 0 && statistics.totalReceitas === 0 && statistics.totalDespesas === 0
+        error: monthlyData.length === 0 && categoryData.length === 0 && statistics.totalReceitas === 0 && statistics.totalDespesas === 0 && statistics.saldo === 0
           ? "Nenhum dado encontrado. Cadastre suas transações para ver o dashboard."
           : null,
       });

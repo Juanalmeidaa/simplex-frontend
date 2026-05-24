@@ -65,7 +65,7 @@ export function Header() {
 
         <div className="flex items-center gap-1">
           <span className="mr-4 text-sm text-muted-foreground">
-            {DateFormatter.format(new Date())}
+            {DateFormatter.format(new Date().toISOString())}
           </span>
 
           <Button

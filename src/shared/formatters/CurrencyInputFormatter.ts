@@ -1,11 +1,11 @@
 export class CurrencyInputFormatter {
   static format(value: string): string {
     const digits = value.replace(/[^\d]/g, '');
-    
+
     if (!digits) return '';
-    
+
     const numberValue = parseInt(digits, 10);
-    
+
     return new Intl.NumberFormat('pt-BR', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
@@ -28,7 +28,7 @@ export class CurrencyInputFormatter {
       .replace(/\./g, '')
       .replace(',', '.');
 
-    return Math.round(parseFloat(cleaned) * 100);
+    return parseFloat(cleaned) || 0;
   }
 
   static parseToCents(value: string): number {
@@ -41,7 +41,7 @@ export class CurrencyInputFormatter {
     const parsed = parseFloat(cleaned);
     if (isNaN(parsed)) return 0;
 
-    return Math.round(parsed * 100);
+    return parsed;
   }
 
   static parseToFloat(value: string): number {
@@ -58,12 +58,12 @@ export class CurrencyInputFormatter {
     return parseInt(digits, 10) || 0;
   }
 
-  static fromStorage(cents: number): string {
-    if (!cents) return '';
+  static fromStorage(value: number): string {
+    if (!value) return '';
 
     return new Intl.NumberFormat('pt-BR', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    }).format(cents / 100);
+    }).format(value);
   }
 }
